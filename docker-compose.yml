@@ -1,0 +1,56 @@
+version: '3.1'
+
+services: 
+    postgres:
+        env_file: 
+            - .env
+        image: postgres:alpine
+        container_name: postgres
+        restart: always
+        environment: 
+            - POSTGRES_DB=sicovi
+            - POSTGRES_USER=devsicovi
+            - POSTGRES_PASSWORD=123456
+            - PGDATA=/var/lib/postgresql/data
+        volumes: 
+            - ./postgresql:/var/lib/postgresql/data
+            - ./db.sql:/docker-entrypoint-initdb.d/db.sql
+        ports: 
+            - 5432:5432
+    pgbackups:
+        image: prodrigestivill/postgres-backup-local
+        restart: always
+        container_name: cron-backup
+        user: postgres:postgres
+        volumes:
+            - ./backups:/backups
+        links:
+            - postgres
+        depends_on:
+            - postgres
+        environment:
+            - POSTGRES_HOST=postgres
+            - POSTGRES_DB=sicovi
+            - POSTGRES_USER=sicovi-dev
+            - POSTGRES_PASSWORD=123456
+            - POSTGRES_EXTRA_OPTS=-Z6 --schema=public --blobs
+            - SCHEDULE=0 0 * * * *
+            - BACKUP_KEEP_DAYS=7
+            - BACKUP_KEEP_WEEKS=4
+            - BACKUP_KEEP_MONTHS=6
+            - HEALTHCHECK_PORT=8080
+    frontend:
+        image: nginx:stable-alpine
+        container_name: frontend
+        restart: always
+        volumes: 
+            - ./app:/usr/share/nginx/html
+        ports: 
+            - 80:80
+        environment: 
+            - NGINX_PORT=80
+    api:
+        image: node:latest
+        container_name: api
+        restart: always
+    
